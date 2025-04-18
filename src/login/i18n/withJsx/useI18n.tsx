@@ -28,9 +28,11 @@ export function createUseI18n<
         };
     };
     messagesByLanguageTag_themeDefined: Partial<{
-        [languageTag in LanguageTag_defaultSet | LanguageTag_notInDefaultSet]: {
-            [key in MessageKey_themeDefined]: string | Record<ThemeName, string>;
-        };
+        [languageTag in LanguageTag_defaultSet | LanguageTag_notInDefaultSet]:
+            | {
+                  [key in MessageKey_themeDefined]: string | Record<ThemeName, string>;
+              }
+            | (() => Promise<{ default: { [key in MessageKey_themeDefined]: string | Record<ThemeName, string> } }>);
     }>;
 }): ReturnTypeOfCreateUseI18n<MessageKey_themeDefined, LanguageTag_notInDefaultSet> {
     const { extraLanguageTranslations, messagesByLanguageTag_themeDefined } = params;
@@ -86,7 +88,11 @@ export function createUseI18n<
             const i18n: I18n = {
                 ...i18n_noJsx,
                 msg: (msgKey, ...args) => renderHtmlString({ htmlString: i18n_noJsx.msgStr(msgKey, ...args), msgKey }),
-                advancedMsg: (msgKey, ...args) => renderHtmlString({ htmlString: i18n_noJsx.advancedMsgStr(msgKey, ...args), msgKey })
+                advancedMsg: (msgKey, ...args) =>
+                    renderHtmlString({
+                        htmlString: i18n_noJsx.advancedMsgStr(msgKey, ...args),
+                        msgKey
+                    })
             };
 
             cache.set(i18n_noJsx, i18n);

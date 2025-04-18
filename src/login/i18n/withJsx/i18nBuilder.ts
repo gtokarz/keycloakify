@@ -2,7 +2,7 @@ import type {
     LanguageTag as LanguageTag_defaultSet,
     MessageKey as MessageKey_defaultSet
 } from "../messages_defaultSet/types";
-import { type ReturnTypeOfCreateUseI18n, createUseI18n } from "../withJsx/useI18n";
+import { createUseI18n, type ReturnTypeOfCreateUseI18n } from "../withJsx/useI18n";
 
 export type I18nBuilder<
     ThemeName extends string = never,
@@ -37,12 +37,14 @@ export type I18nBuilder<
         >;
         withCustomTranslations: <MessageKey_themeDefined extends string>(
             messagesByLanguageTag_themeDefined: Partial<{
-                [LanguageTag in
-                    | LanguageTag_defaultSet
-                    | LanguageTag_notInDefaultSet]: Record<
-                    MessageKey_themeDefined,
-                    string | Record<ThemeName, string>
-                >;
+                [LanguageTag in LanguageTag_defaultSet | LanguageTag_notInDefaultSet]:
+                    | Record<MessageKey_themeDefined, string | Record<ThemeName, string>>
+                    | (() => Promise<{
+                          default: Record<
+                              MessageKey_themeDefined,
+                              string | Record<ThemeName, string>
+                          >;
+                      }>);
             }>
         ) => I18nBuilder<
             ThemeName,
@@ -72,10 +74,14 @@ function createI18nBuilder<
         };
     };
     messagesByLanguageTag_themeDefined: Partial<{
-        [LanguageTag in LanguageTag_defaultSet | LanguageTag_notInDefaultSet]: Record<
-            MessageKey_themeDefined,
-            string | Record<ThemeName, string>
-        >;
+        [LanguageTag in LanguageTag_defaultSet | LanguageTag_notInDefaultSet]:
+            | Record<MessageKey_themeDefined, string | Record<ThemeName, string>>
+            | (() => Promise<{
+                  default: Record<
+                      MessageKey_themeDefined,
+                      string | Record<ThemeName, string>
+                  >;
+              }>);
     }>;
 }): I18nBuilder<ThemeName, MessageKey_themeDefined, LanguageTag_notInDefaultSet> {
     const i18nBuilder: I18nBuilder<
