@@ -75,6 +75,7 @@ export type BuildContext = {
         realmJsonFilePath: string | undefined;
         port: number | undefined;
     };
+    experimentalDynamicMessageProperties: boolean;
 };
 
 assert<Equals<keyof BuildContext["implementedThemeTypes"], ThemeType | "email">>();
@@ -96,6 +97,7 @@ export type BuildOptions = {
         realmJsonFilePath?: string;
         port?: number;
     };
+    experimentalDynamicMessageProperties?: boolean;
 } & BuildOptions.AccountThemeImplAndKeycloakVersionTargets;
 
 export namespace BuildOptions {
@@ -340,7 +342,7 @@ export function getBuildContext(params: {
             return id<z.ZodType<TargetType>>(zTargetType);
         })();
 
-        const zBuildOptions = (() => {
+       const zBuildOptions = (() => {
             type TargetType = BuildOptions;
 
             const zTargetType = z.intersection(
@@ -360,7 +362,8 @@ export function getBuildContext(params: {
                     groupId: z.string().optional(),
                     keycloakifyBuildDirPath: z.string().optional(),
                     kcContextExclusionsFtl: z.string().optional(),
-                    startKeycloakOptions: zStartKeycloakOptions.optional()
+                    startKeycloakOptions: zStartKeycloakOptions.optional(),
+                    experimentalDynamicMessageProperties: z.boolean().optional(),
                 }),
                 zAccountThemeImplAndKeycloakVersionTargets
             );
@@ -1064,6 +1067,7 @@ export function getBuildContext(params: {
                           cwd: relativePathsCwd
                       }),
             port: buildOptions.startKeycloakOptions?.port
-        }
+        },
+        experimentalDynamicMessageProperties: buildOptions.experimentalDynamicMessageProperties ?? false
     };
 }

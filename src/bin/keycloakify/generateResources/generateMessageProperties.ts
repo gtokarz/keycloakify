@@ -1,6 +1,6 @@
-import { type ThemeType, FALLBACK_LANGUAGE_TAG } from "../../shared/constants";
+import { FALLBACK_LANGUAGE_TAG, type ThemeType } from "../../shared/constants";
 import { crawl } from "../../tools/crawl";
-import { join as pathJoin, dirname as pathDirname } from "path";
+import { dirname as pathDirname, join as pathJoin } from "path";
 import { symToStr } from "tsafe/symToStr";
 import * as recast from "recast";
 import * as babelParser from "@babel/parser";
@@ -9,6 +9,7 @@ import * as babelTypes from "@babel/types";
 import { escapeStringForPropertiesFile } from "../../tools/escapeStringForPropertiesFile";
 import { getThisCodebaseRootDirPath } from "../../tools/getThisCodebaseRootDirPath";
 import * as fs from "fs";
+import * as fsp from "fs/promises";
 import { assert } from "tsafe/assert";
 import type { BuildContext } from "../../shared/buildContext";
 import { getAbsoluteAndInOsFormatPath } from "../../tools/getAbsoluteAndInOsFormatPath";
@@ -16,20 +17,27 @@ import { getAbsoluteAndInOsFormatPath } from "../../tools/getAbsoluteAndInOsForm
 export type BuildContextLike = {
     themeNames: string[];
     themeSrcDirPath: string;
+    cacheDirPath: string;
+    experimentalDynamicMessageProperties: boolean;
 };
 
 assert<BuildContext extends BuildContextLike ? true : false>();
 
-export function generateMessageProperties(params: {
+async function loadJsonFile(filePath: string) {
+    const jsonContent = await fsp.readFile(filePath, { encoding: "utf-8" });
+    return JSON.parse(jsonContent);
+}
+
+export async function generateMessageProperties(params: {
     buildContext: BuildContextLike;
     themeType: Exclude<ThemeType, "admin">;
-}): {
+}): Promise<{
     languageTags: string[];
     writeMessagePropertiesFiles: (params: {
         messageDirPath: string;
         themeName: string;
     }) => void;
-} {
+}> {
     const { buildContext, themeType } = params;
 
     const baseMessagesDirPath = pathJoin(
@@ -119,7 +127,7 @@ export function generateMessageProperties(params: {
 
     const messages_defaultSet_by_languageTag_notInDefaultSet:
         | { [languageTag_notInDefaultSet: string]: Record<string, string> }
-        | undefined = (() => {
+        | undefined = buildContext.experimentalDynamicMessageProperties ? (await loadJsonFile(pathJoin(buildContext.cacheDirPath, "withExtraLanguages.json"))) : (() => {
         if (i18nTsRoot === undefined) {
             return undefined;
         }
@@ -130,7 +138,7 @@ export function generateMessageProperties(params: {
         > = {};
 
         recast.visit(i18nTsRoot, {
-            visitCallExpression: function (path) {
+            visitCallExpression: function(path) {
                 const node = path.node;
 
                 // Check if the callee is a MemberExpression with property 'withExtraLanguages'
@@ -192,10 +200,10 @@ export function generateMessageProperties(params: {
                                                     body.body.forEach(statement => {
                                                         if (
                                                             statement.type ===
-                                                                "ReturnStatement" &&
+                                                            "ReturnStatement" &&
                                                             statement.argument &&
                                                             statement.argument.type ===
-                                                                "CallExpression" &&
+                                                            "CallExpression" &&
                                                             statement.argument.callee
                                                                 .type === "Import"
                                                         ) {
@@ -250,7 +258,7 @@ export function generateMessageProperties(params: {
                         let declarationCode: string | undefined = "";
 
                         recast.visit(root, {
-                            visitVariableDeclarator: function (path) {
+                            visitVariableDeclarator: function(path) {
                                 const node = path.node;
 
                                 // Check if the variable name is 'messages'
@@ -303,11 +311,11 @@ export function generateMessageProperties(params: {
 
     const messages_themeDefined_by_languageTag:
         | {
-              [languageTag: string]:
-                  | Record<string, string | Record<string, string>>
-                  | undefined;
-          }
-        | undefined = (() => {
+        [languageTag: string]:
+            | Record<string, string | Record<string, string>>
+            | undefined;
+    }
+        | undefined = buildContext.experimentalDynamicMessageProperties ? (await loadJsonFile(pathJoin(buildContext.cacheDirPath, "withCustomTranslations.json"))) : (() => {
         if (i18nTsRoot === undefined) {
             return undefined;
         }
@@ -315,7 +323,7 @@ export function generateMessageProperties(params: {
         let firstArgumentCode: string | undefined = undefined;
 
         recast.visit(i18nTsRoot, {
-            visitCallExpression: function (path) {
+            visitCallExpression: function(path) {
                 const node = path.node;
 
                 if (
@@ -383,7 +391,7 @@ export function generateMessageProperties(params: {
                         messages_themeDefined =
                             messages_themeDefined_by_languageTag[
                                 Object.keys(messages_themeDefined_by_languageTag)[0]
-                            ];
+                                ];
                     }
                     if (messages_themeDefined === undefined) {
                         break add_theme_defined_messages;

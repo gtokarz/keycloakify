@@ -294,7 +294,7 @@ export async function generateResources(params: {
 
             assert(themeType !== "admin" && themeType !== "email");
 
-            const wrap = generateMessageProperties({
+            const wrap = await generateMessageProperties({
                 buildContext,
                 themeType
             });
